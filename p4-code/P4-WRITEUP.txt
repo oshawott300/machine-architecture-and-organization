@@ -1,0 +1,237 @@
+                              ____________
+
+                               P4 WRITEUP
+                              ____________
+
+
+- Name: John Lei
+- NetID: lei00007
+
+Answer the questions below according to the project specification. Write
+your answers directly in this text file and submit it along with your
+code.
+
+
+PROBLEM 1: matsquare_OPTM()
+===========================
+
+  Do your timing study on csel-keller1250-NN.cselabs.umn.edu
+
+
+(A) Paste Source Code
+~~~~~~~~~~~~~~~~~~~~~
+
+  Paste a copy of your source code for the function `matsquare_OPTM()'
+
+  int matsquare_VER4(matrix_t mat, matrix_t matsq) {
+  int j;
+  for(int i=0; i<mat.rows; i++){
+    for(int j=0; j<mat.cols; j++){
+      MSET(matsq,i,j,0);                         // initialize to 0s
+    }
+  }
+  for(int i=0; i<mat.rows; i++){
+    for(int k=0; k<mat.rows; k++){
+      int lead = MGET(mat, i, k);
+      for(j=0; j<(mat.cols-4); j+=4){
+          int cur0 = MGET(matsq, i ,j) + lead*MGET(mat, k, j);
+          MSET(matsq,i,j,cur0);
+
+          int cur1 = MGET(matsq, i ,j+1) + lead*MGET(mat, k, j+1);
+          MSET(matsq,i,j+1,cur1);
+
+          int cur2 = MGET(matsq, i ,j+2) + lead*MGET(mat, k, j+2);
+          MSET(matsq,i,j+2,cur2);
+
+          int cur3 = MGET(matsq, i ,j+3) + lead*MGET(mat, k, j+3);
+          MSET(matsq,i,j+3,cur3);
+          }
+          for(; j<mat.cols; j++){
+           int cur = MGET(matsq, i ,j) + lead*MGET(mat, k, j);
+          MSET(matsq,i,j,cur);
+         }
+    }
+  }
+  return 0;
+}
+
+  ##################################################################
+
+
+(B) Timing on csel-kh1250-NN
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Paste a copy of the results of running `matsquare_benchmark' on
+  csel-kh1250-NN.cselabs.umn.edu in the space below which shows how your
+  performance optimizations improved on the baseline codes.
+
+  SIZE       BASE       OPTM  SPDUP   LOG2 FACTOR POINTS 
+   273 3.4626e-02 1.6703e-02   2.07   1.05   1.00   1.05 
+   512 2.6099e-01 1.1249e-01   2.32   1.21   1.88   2.28 
+   722 6.3157e-01 3.0014e-01   2.10   1.07   2.64   2.84 
+   801 8.7380e-01 4.3166e-01   2.02   1.02   2.93   2.99 
+  1024 2.6280e+00 8.8678e-01   2.96   1.57   3.75   5.88 
+  1101 5.3481e+00 1.1076e+00   4.83   2.27   4.03   9.16 
+  1309 1.4233e+01 1.8841e+00   7.55   2.92   4.79  13.99 
+
+
+  ##################################################################
+
+
+(C) Optimizations
+~~~~~~~~~~~~~~~~~
+
+  Describe in some detail the optimizations you used to speed the code
+  up.  THE CODE SHOULD CONTAIN SOME COMMENTS already to describe these
+  but in the section below, describe in English the techniques you used
+  to make the code run faster.  Format your descriptions into discrete
+  chunks such as.
+        Optimization 1: Blah bla blah... This should make run
+        faster because yakkety yakeety yak.
+
+        Optimization 2: Blah bla blah... This should make run
+        faster because yakkety yakeety yak.
+
+        ...  Optimization N: Blah bla blah... This should make run
+        faster because yakkety yakeety yak.
+  Full credit solutions will have a least two optimizations and describe
+  WHY these improved performance in at least a couple sentences.
+
+  Optimization 1: Re-order memory acess to be sequential. This will favor the cache. So I changed where they algorithm favors row-majr as C is a row-major language.
+  This just goes through the matrix row-wise to move away from stride that it used for the column-wise algorithm. So instead of going to one element of a row and then 
+  jumping all the way to a column which takes a lot of time, we now just move across the row when doing calculations which optimizes the row-major C language. As each
+  row is contigious in the memory , loading elements will take nearby elements in the row to cache.
+  Compared if we went through the columns, this mens we would have to jump non-contiguously through the memory, which takes up more time than the row-major version and doesn't favor the cache.
+  Basically we are going through the matrix sequentially by the rows rather than jumping down to the columns each iteration. 
+
+  Optimization 2: This barely gets any points, but just I reduced the arithmetic down to one line. This means we don't have to allocate memory for new variables everytime we need some part of the matrix.
+  Again this barely did much, but it made it a little faster as we only need one variable to to do all the arithmetic.
+
+  Optimization 3: Lastly, I unrolled the loop. This means I just copied loop iterations manually. In this case I manually did the arithmetic every four iterations. So instead of looping everytime to do the arithmetic which takes some time, 
+  we can essentially jump every four times to the arithmetic and manually do our computations four times in one loop. 
+  This means less comparisons if get to the max length andless additions to j. This will make it faster as we are looping less when we unroll the loop. 
+  This will also enable pipelining as we have less jumps so instructions can move in more of a linear fashion.
+  We have the extra loop at the end just in case we loop
+  not by a factor of 4. If we don't loop at a factor of 4, the last for loop will take care of it.
+
+  ##################################################################
+
+
+PROBLEM 2: Timing Search Algorithms
+===================================
+
+  Do your timing study on csel-kh1250-NN.cselabs.umn.edu. In most cases,
+  report times larger than 1e-03 seconds as times shorter than this are
+  unreliable. Run searches for more repetitions to lengthen run times.
+
+
+(A) Min Size for Algorithmic Differences
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Determine the size of input array does one start to see a measurable
+  difference in the performance of the linear and logarithmic
+  algorithms.  Produce a timing table which includes all algorithms
+  which clearly demonstrates an uptick in the times associated with some
+  while others remain much lower.  Identify what size this appears to be
+  a occur.
+
+LENGTH SEARCHES  array    list     binary   tree 
+   512  61440 1.0609e-02 2.6184e-02 1.8370e-03 1.7010e-03 
+  1024 122880 3.9117e-02 1.0734e-01 3.7820e-03 3.7470e-03 
+  2048 245760 1.5551e-01 1.2163e+00 8.4660e-03 8.8850e-03 
+  4096 491520 6.1474e-01 6.6393e+00 1.7302e-02 1.8314e-02 
+  8192 983040 2.4704e+00 3.3878e+01 3.7228e-02 4.0479e-02 
+ 16384 1966080 9.6511e+00 2.2225e+02 7.6009e-02 8.3313e-02 
+
+ We can compare the linear searches with the binary searches. So compare array with binary times and the list with tree times.
+ Minimum size 9 and max size 14 as listed in the documentation and just had a bunch of repetitions (60).
+ At size of 11 or length of 2048 is where the largest gap/uptick is for the time when we compare the array time and binary time/list time and tree time,
+ but the uptick technically starts at size 9 and at every size there is a small difference in times for both linear searches and binary searches plus 
+ as size increases, so does the disparity/gap of the times.
+ 
+
+
+
+  ##################################################################
+
+
+(B) Linear Search in List vs Array
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Determine whether the linear array and linked list search remain
+  approximately at the same performance level as size increases to large
+  data or whether one begins to become favorable over other. Determine
+  the approximate size at which this divergence becomes obvious. Discuss
+  reasons WHY this difference arises.
+
+  Looking at the times above, the array is faster and becomes more favorable when size increases. Specifically at size 11 or length 2048 as the time gap increases. Even at the start at size 9, there is a difference, but not by much.
+  It's only at around size 11 where we see a bigger(probably the largest) divergence in time.
+  This is because with an array you have easy access by indexing into the array. This allows some sort of random access compared to a linked list which you'd have to go through the 
+  entire list to find the element. Also it is due to memory in array being sequential so we don't have to jump as much while the linked list has it where the pointer is pointed at 
+  numerous memory locations. This means we would have jump around to find the element in the linked list while we don't have to when accessing elements sequentially in an array.
+
+
+  ##################################################################
+
+
+(C) Binary Search in Tree vs Array
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  Compare the binary array search and binary tree search on small to
+  very large arrays. Determine if there is a size at which the
+  performance of these two begins to diverge. If so, describe why this
+  might be happening based on your understanding of the data structures
+  and the memory system. If not, describe why you believe there is
+  little performance difference between the two.
+
+  
+  When comparing at sizes of 9 to 20, the times actually stay relatively the same. The only small divergence is at larger sizes (from 17-20), but it is really nothing compared to linear searches.
+  I believe this would be the same due to binary searches being the same O(nlgn) runtime and this same method of dividing the structure and solving the individual parts.
+  Unlike linked lists and arrays which have two different ways to linearly search for an element, the same binary search algorithm is used on both structures.
+  Also, they are both sorted structures, so having this algorithm work on both sorted strucutres will give the same runtime. 
+  The only small difference is that trees are a little bit slower, but only because trees use a node structure which takes up more memory, but that barely makes a difference. 
+  Memory locations are more random in the tree compared to the array.
+
+
+  ##################################################################
+
+
+(D) Caching Effects on Algorithms
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  It is commonly believed that memory systems that feature a Cache will
+  lead to arrays performing faster than linked structures such as Linked
+  Lists and Binary Search Trees. Describe whether your timings confirm
+  or refute this belief.  Address both types of algorithms in your
+  answer:
+  - What effects does Cache have on Linear Search in arrays and lists
+    and why?
+  - What effects does Cache have on Binary Search in arrays and trees
+    and why?
+
+  For linear searches, array is more clearly faster compared to lists as the Cache is essentially accessing memory randomly. As stated previously,
+  the array is accessed randomly, so the Cache will be used in arrays to get the element. Since lists do not have this random access feature, this indicates that cache
+  doesn't have an effect on the linked lists, so the array's time for a linear search will be faster due to the Cache. Also as the memory for an array is ordered sequentially,
+  we don't have to jump around as much, but with linked lists, the memory has a pointer to many memory locations, meaning there is a of jumping around. This means the cache will have a harder time
+  knowing which element is going to be next, unlike the array which is in a sequence so the Cache is able to get nearby elements faster.
+  Memory locations are more random in a linked list, so Cache will have a harder time figuring which element to find. 
+
+  For binary searches, the runtimes are generally the same, with binary array being a little bit faster, because the Cache acts sort of similar in these searches. The tree is like a linked list
+  where memory locations are random as we need a pointer to the nodes so Cache is still jumping around elements more than the array. That is why the array is a little faster, but why the binary search on the array isn't drastically faster than the tree
+  is that while the array's memory is sequential, the search doesn't look at the elements in order like a linear search. It splits the array in half over and over again, so the Cache (unlike linear searches)
+  doesn't go through memory sequentially in order. Thus they are pretty much the same due to this same binary search algorithm and the array's memory is not looked at sequentially in order, but actually is split in half
+  until we get the element we are looking for.
+
+  ##################################################################
+
+
+(E) OPTIONAL MAKEUP CREDIT
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  If you decided to make use of a table of function pointers/structs
+  which is worth makeup credit, describe your basic design for this
+  below.
+
+  ####################### YOUR ANSWER HERE #########################
+
+  ##################################################################
